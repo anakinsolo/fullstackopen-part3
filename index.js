@@ -1,6 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
+const Person = require('./services/mongodb');
 
 const app = express();
 app.use(express.json());
@@ -17,28 +19,7 @@ app.use(morgan((tokens, req, res) => {
 app.use(cors());
 app.use(express.static('build'))
 
-let persons = [
-  { 
-    "id": 1,
-    "name": "Arto Hellas", 
-    "number": "040-123456"
-  },
-  { 
-    "id": 2,
-    "name": "Ada Lovelace", 
-    "number": "39-44-5323523"
-  },
-  { 
-    "id": 3,
-    "name": "Dan Abramov", 
-    "number": "12-43-234345"
-  },
-  { 
-    "id": 4,
-    "name": "Mary Poppendieck", 
-    "number": "39-23-6423122"
-  }
-];
+let persons = [];
 
 app.get('/', (request, response) => {
   response.send('<h1>Hello World!</h1>')
@@ -51,18 +32,20 @@ app.get('/info', (request, response) => {
 });
 
 app.get('/api/persons', (request, response) => {
-  response.json(persons)
+  Person.find({}).then(res => {
+    persons = res;
+    response.json(persons);
+  });  
 })
 
 app.get('/api/persons/:id', (request, response) => {
   let id = parseInt(request.params.id);
-  let person = persons.find(p => p.id === id);
-
-  if (person) {
-    return response.json(person);
-  }
-
-  return response.status(404).send('Not found....');
+  Person.findById(id).then(reP => {
+    return response.status(200).json(reP);
+  }).catch(error => {
+    console.log('Error: ', error.message);
+    return response.status(404).send('Not found....');
+  });
 });
 
 app.delete('/api/persons/:id', (req, res) => {
@@ -82,9 +65,14 @@ app.post('/api/persons', (req, res) => {
     return res.status(400).json({error: 'The name already exists in the phonebook...'});
   }
 
-  data.id = Math.floor(Math.random() * 1000);
-  persons = persons.concat(data);
-  res.status(200).json(data);
+  let newPerson = new Person({
+    'name': data.name,
+    'number': data.number
+  })
+
+  newPerson.save().then(savedPerson => {
+    res.status(200).json(savedPerson);
+  })
 });
 
 const PORT = process.env.PORT || 3001
