@@ -17,7 +17,8 @@ app.use(morgan((tokens, req, res) => {
   ].join(' ')
 }));
 app.use(cors());
-app.use(express.static('build'))
+app.use(express.static('build'));
+
 
 let persons = [];
 
@@ -27,32 +28,28 @@ app.get('/', (request, response) => {
 
 app.get('/info', (request, response) => {
   let date = new Date();
-
-  response.send(`Phonebook has info for ${persons.length} people <br/> ${date}`)
+  Person.find({}).then(res => {
+    response.send(`Phonebook has info for ${res.length} people <br/> ${date}`)
+  });  
 });
 
 app.get('/api/persons', (request, response) => {
   Person.find({}).then(res => {
-    persons = res;
-    response.json(persons);
+    response.status(200).json(res);
   });  
 })
 
-app.get('/api/persons/:id', (request, response) => {
-  let id = parseInt(request.params.id);
-  Person.findById(id).then(reP => {
+app.get('/api/persons/:id', (request, response, next) => {
+  Person.findById(request.params.id).then(reP => {
     return response.status(200).json(reP);
-  }).catch(error => {
-    console.log('Error: ', error.message);
-    return response.status(404).send('Not found....');
-  });
+  }).catch(error => next(error));
 });
 
-app.delete('/api/persons/:id', (req, res) => {
-  let id = parseInt(req.params.id);
-  persons = persons.filter(person => person.id !== id);
-
-  res.status(204).end();
+app.delete('/api/persons/:id', (req, res, next) => {
+  Person.findByIdAndRemove(req.params.id).then(result => {
+    console.log(result);
+    res.status(204).end();
+  }).catch(err => next(err));
 });
 
 app.post('/api/persons', (req, res) => {
@@ -73,6 +70,26 @@ app.post('/api/persons', (req, res) => {
   newPerson.save().then(savedPerson => {
     res.status(200).json(savedPerson);
   })
+});
+
+app.put('/api/persons/:id', (request, response, next) => {
+  let data = request.body;
+  let person = {
+    'name': data.name,
+    'number': data.number
+  }
+  
+  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+    .then(updatedPerson => {
+      response.status(200).json(updatedPerson);
+    })
+    .catch(err => next(err));
+});
+
+
+app.use((err, req, res, next) => {
+  console.error(err.message);
+  return res.status(500).send({'error': err.message});
 });
 
 const PORT = process.env.PORT || 3001
