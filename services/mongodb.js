@@ -13,8 +13,22 @@ mongoose.connect(url)
 
 //Create Schema
 const personSchema = new mongoose.Schema({
-  'name': String,
-  'number': String
+  'name': {
+    type: String,
+    minLength: 3,
+    required: [true, 'name required']
+  },
+  'number': {
+    type: String,
+    minLength: 8,
+    validate: {
+      validator: (v) => {
+        return /(^\d{2,3}-\d{3,})/.test(v);
+      },
+      message: 'Person validation failed: number: phone number must be XX-XXXXX or XXX-XXXX'
+    },
+    required: [true, 'number required']
+  }
 });
 
 //Schema config

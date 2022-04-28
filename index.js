@@ -52,11 +52,8 @@ app.delete('/api/persons/:id', (req, res, next) => {
   }).catch(err => next(err));
 });
 
-app.post('/api/persons', (req, res) => {
+app.post('/api/persons', (req, res, next) => {
   let data = req.body;
-  if (!data.name || !data.number) {
-    return res.status(400).json({error: 'The name or number is missing...'});
-  }
 
   if (persons.find(p => p.name === data.name)) {
     return res.status(400).json({error: 'The name already exists in the phonebook...'});
@@ -69,7 +66,7 @@ app.post('/api/persons', (req, res) => {
 
   newPerson.save().then(savedPerson => {
     res.status(200).json(savedPerson);
-  })
+  }).catch(err => next(err));
 });
 
 app.put('/api/persons/:id', (request, response, next) => {
@@ -88,8 +85,16 @@ app.put('/api/persons/:id', (request, response, next) => {
 
 
 app.use((err, req, res, next) => {
-  console.error(err.message);
-  return res.status(500).send({'error': err.message});
+  if (err.name === 'CastError') {
+    return res.status(400).json({'error': 'wrong ID type or format...'});
+  }
+
+  if (err.name === 'ValidationError') {
+    console.log(err.message);
+    return res.status(400).send({'error': err.message});
+  }
+
+  next(err);
 });
 
 const PORT = process.env.PORT || 3001
